@@ -36,6 +36,7 @@ type Foo struct {
 
 // FooSpec is the spec for a Foo resource
 type FooSpec struct {
+	Replicas        *int32 `json:"replicas"`
 	SecretName      string `json:"secretName"`
 	SecretNamespace string `json:"secretNamespace"`
 }
