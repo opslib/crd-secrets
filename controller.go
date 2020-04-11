@@ -272,10 +272,10 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the secret with the name specified in Foo.spec
-	secret, err := c.secretsLister.Secrets(foo.Namespace).Get(secretName)
+	secret, err := c.secretsLister.Secrets(foo.Spec.SecretNamespace).Get(secretName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		secret, err = c.kubeclientset.CoreV1().Secrets(foo.Namespace).Create(context.TODO(), newSecret(foo), metav1.CreateOptions{})
+		secret, err = c.kubeclientset.CoreV1().Secrets(foo.Spec.SecretNamespace).Create(context.TODO(), newSecret(foo), metav1.CreateOptions{})
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
