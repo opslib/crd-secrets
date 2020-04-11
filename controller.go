@@ -262,16 +262,16 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	secretName := foo.Spec.DeploymentName
+	secretName := foo.Spec.SecretName
 	if secretName == "" {
 		// We choose to absorb the error here as the worker would requeue the
 		// resource otherwise. Instead, the next time the resource is updated
 		// the resource will be queued again.
-		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
+		utilruntime.HandleError(fmt.Errorf("%s: secret name must be specified", key))
 		return nil
 	}
 
-	// Get the deployment with the name specified in Foo.spec
+	// Get the secret with the name specified in Foo.spec
 	secret, err := c.secretsLister.Secrets(foo.Namespace).Get(secretName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
