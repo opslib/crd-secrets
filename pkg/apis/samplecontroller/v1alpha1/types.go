@@ -28,19 +28,20 @@ type Foo struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FooSpec   `json:"spec"`
-	Status FooStatus `json:"status"`
+	Spec     FooSpec     `json:"spec"`
+	Database FooDatabase `json:"database"`
 }
 
 // FooSpec is the spec for a Foo resource
 type FooSpec struct {
-	DeploymentName string `json:"deploymentName"`
-	Replicas       *int32 `json:"replicas"`
+	SecretName      string `json:"secretName"`
+	TargetNamespace string `json:"targetNamespace"`
 }
 
 // FooStatus is the status for a Foo resource
-type FooStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
+type FooDatabase struct {
+	DBName string `json:"dbName"`
+	DBPass string `json:"dbPass"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -353,12 +353,13 @@ func (c *Controller) handleObject(obj interface{}) {
 // newSecret creates a new Secret for a Foo resource.
 func newSecret(foo *samplev1alpha1.Foo) *corev1.Secret {
 	data := map[string]string{
-		"app": "nginx",
+		"dbname": foo.Database.DBName,
+		"dbpass": foo.Database.DBPass,
 	}
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      foo.Spec.DeploymentName,
-			Namespace: foo.Namespace,
+			Name:      foo.Spec.SecretName,
+			Namespace: foo.Spec.TargetNamespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
 			},
