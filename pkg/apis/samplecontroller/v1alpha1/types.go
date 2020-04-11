@@ -28,7 +28,17 @@ type Foo struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+	Spec   FooSpec   `json:"spec"`
+	Status FooStatus `json:"status"`
+
+=======
 	Spec     FooSpec     `json:"spec"`
+>>>>>>> dd1d1f84c9c9b153b9771997521aa8395f56eac9
+=======
+	Spec     FooSpec     `json:"spec"`
+>>>>>>> dd1d1f84c9c9b153b9771997521aa8395f56eac9
 	Database FooDatabase `json:"database"`
 }
 
@@ -36,6 +46,15 @@ type Foo struct {
 type FooSpec struct {
 	SecretName      string `json:"secretName"`
 	TargetNamespace string `json:"targetNamespace"`
+<<<<<<< HEAD
+}
+
+// FooStatus is the status for a Foo resource
+type FooDatabase struct {
+	DBName string `json:"dbName"`
+	DBPass string `json:"dbPass"`
+=======
+>>>>>>> dd1d1f84c9c9b153b9771997521aa8395f56eac9
 }
 
 // FooStatus is the status for a Foo resource
