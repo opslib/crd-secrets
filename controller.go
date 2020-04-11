@@ -28,10 +28,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -70,8 +72,11 @@ type Controller struct {
 
 	deploymentsLister appslisters.DeploymentLister
 	deploymentsSynced cache.InformerSynced
-	foosLister        listers.FooLister
-	foosSynced        cache.InformerSynced
+	secretsLister     corelisters.SecretLister
+	secretsSynced     cache.InformerSynced
+
+	foosLister listers.FooLister
+	foosSynced cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -89,6 +94,7 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
+	secretInformer coreinformers.SecretInformer,
 	fooInformer informers.FooInformer) *Controller {
 
 	// Create event broadcaster
@@ -106,6 +112,8 @@ func NewController(
 		sampleclientset:   sampleclientset,
 		deploymentsLister: deploymentInformer.Lister(),
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
+		secretsLister:     secretInformer.Lister(),
+		secretsSynced:     secretInformer.Informer().HasSynced,
 		foosLister:        fooInformer.Lister(),
 		foosSynced:        fooInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Foos"),
@@ -132,6 +140,21 @@ func NewController(
 			newDepl := new.(*appsv1.Deployment)
 			oldDepl := old.(*appsv1.Deployment)
 			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
+				// Periodic resync will send update events for all known Deployments.
+				// Two different versions of the same Deployment will always have different RVs.
+				return
+			}
+			controller.handleObject(new)
+		},
+		DeleteFunc: controller.handleObject,
+	})
+
+	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: controller.handleObject,
+		UpdateFunc: func(old, new interface{}) {
+			newSecl := new.(*corev1.Secret)
+			oldSecl := old.(*corev1.Secret)
+			if newSecl.ResourceVersion == oldSecl.ResourceVersion {
 				// Periodic resync will send update events for all known Deployments.
 				// Two different versions of the same Deployment will always have different RVs.
 				return
@@ -261,6 +284,37 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
+	secretName := foo.Spec.DeploymentName
+	if secretName == "" {
+		// We choose to absorb the error here as the worker would requeue the
+		// resource otherwise. Instead, the next time the resource is updated
+		// the resource will be queued again.
+		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
+		return nil
+	}
+
+	// Get the deployment with the name specified in Foo.spec
+	secret, err := c.secretsLister.Secrets(foo.Namespace).Get(secretName)
+	// If the resource doesn't exist, we'll create it
+	if errors.IsNotFound(err) {
+		secret, err = c.kubeclientset.CoreV1().Secrets(foo.Namespace).Create(context.TODO(), newSecret(foo), metav1.CreateOptions{})
+	}
+
+	// If an error occurs during Get/Create, we'll requeue the item so we can
+	// attempt processing again later. This could have been caused by a
+	// temporary network failure, or any other transient reason.
+	if err != nil {
+		return err
+	}
+
+	// If the Deployment is not controlled by this Foo resource, we should log
+	// a warning to the event recorder and return error msg.
+	if !metav1.IsControlledBy(secret, foo) {
+		msg := fmt.Sprintf(MessageResourceExists, secret.Name)
+		c.recorder.Event(foo, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf(msg)
+	}
+
 	deploymentName := foo.Spec.DeploymentName
 	if deploymentName == "" {
 		// We choose to absorb the error here as the worker would requeue the
@@ -382,6 +436,23 @@ func (c *Controller) handleObject(obj interface{}) {
 
 		c.enqueueFoo(foo)
 		return
+	}
+}
+
+// newSecret creates a new Secret for a Foo resource.
+func newSecret(foo *samplev1alpha1.Foo) *corev1.Secret {
+	data := map[string]string{
+		"app": "nginx",
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      foo.Spec.DeploymentName,
+			Namespace: foo.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
+			},
+		},
+		StringData: data,
 	}
 }
 
