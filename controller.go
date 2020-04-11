@@ -359,7 +359,7 @@ func newSecret(foo *samplev1alpha1.Foo) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      foo.Spec.SecretName,
-			Namespace: foo.Spec.TargetNamespace,
+			Namespace: foo.Spec.SecretNamespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(foo, samplev1alpha1.SchemeGroupVersion.WithKind("Foo")),
 			},
