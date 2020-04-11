@@ -64,7 +64,6 @@ func main() {
 	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
 
 	controller := NewController(kubeClient, exampleClient,
-		kubeInformerFactory.Apps().V1().Deployments(),
 		kubeInformerFactory.Core().V1().Secrets(),
 		exampleInformerFactory.Samplecontroller().V1alpha1().Foos())
 
